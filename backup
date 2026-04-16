@@ -1,15 +1,6 @@
 FROM mcr.microsoft.com/dotnet/framework/sdk:4.8-windowsservercore-ltsc2022 AS build
-WORKDIR /src
 
-COPY ["TrackerAPI.csproj", "packages.config", "./"]
-RUN nuget restore packages.config -PackagesDirectory packages
-
-COPY . .
-RUN msbuild TrackerAPI.csproj /p:Configuration=Release /p:DeployOnBuild=true /p:WebPublishMethod=FileSystem /p:publishUrl=C:\publish /p:CreatePackageOnPublish=false
-
-FROM mcr.microsoft.com/dotnet/framework/aspnet:4.8-windowsservercore-ltsc2022
-WORKDIR /inetpub/wwwroot
-
+# Install IIS and ASP.NET 4.8 support
 RUN dism /online /enable-feature /all \
     /featurename:IIS-WebServerRole \
     /featurename:IIS-WebServer \
@@ -22,7 +13,14 @@ RUN dism /online /enable-feature /all \
     /featurename:IIS-RequestFiltering \
     /NoRestart
 
-COPY --from=build C:/src .
+#restore bugate
+RUN nuget restore packages.config -PackagesDirectory packages
+
+RUN msbuild TrackerAPI.csproj /p:Configuration=Release /p:OutputPath=C:\build
+
+WORKDIR /inetpub/wwwroot
+
+COPY --from=build C:\build .
 
 EXPOSE 80
 
